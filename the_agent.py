@@ -20,11 +20,11 @@ class Agent():
         self.model = self._build_model()
         self.model_target = clone_model(self.model)
         self.total_timesteps = 0
-        self.lives = starting_lives #this parameter does not apply to pong
+        self.lives = starting_lives # Esté parametro no funciona para el env Pong
         self.starting_mem_len = starting_mem_len
         self.learns = 0
 
-
+# Construcción de una red neuronal convolucional para el agente.
     def _build_model(self):
         model = Sequential()
         model.add(Input((84,84,4)))
@@ -40,26 +40,31 @@ class Agent():
         print('\nAgent Initialized\n')
         return model
 
+# Generar un número aleatorio
+# Si es menor a la formula implementada anterior, se toma un número aleatorio.
     def get_action(self,state):
-        """Explore"""
+        # Explora
         if np.random.rand() < self.epsilon:
             return random.sample(self.possible_actions,1)[0]
 
-        """Do Best Acton"""
+        # Toma la mejor acción
         a_index = np.argmax(self.model.predict(state))
         return self.possible_actions[a_index]
 
+# Verifica que todo haya sido validado correctamente
+# Se ejecuta como segunda verificación
     def _index_valid(self,index):
         if self.memory.done_flags[index-3] or self.memory.done_flags[index-2] or self.memory.done_flags[index-1] or self.memory.done_flags[index]:
             return False
         else:
             return True
 
+# Entrenar el modelo de red neuronal convolucional en grupos pequeños de 32
     def learn(self,debug = False):
-        """we want the output[a] to be R_(t+1) + Qmax_(t+1)."""
-        """So target for taking action 1 should be [output[0], R_(t+1) + Qmax_(t+1), output[2]]"""
+        # Queremos que la salida [a] sea R_(t+1) + Qmax_(t+1).
+        # Por lo tanto el target 1 debería ser [output[0], R_(t+1) + Qmax_(t+1), output[2]]
 
-        """First we need 32 random valid indicies"""
+        # Primero se necesitan 32 estados validos
         states = []
         next_states = []
         actions_taken = []
@@ -80,25 +85,27 @@ class Agent():
                 next_rewards.append(self.memory.rewards[index+1])
                 next_done_flags.append(self.memory.done_flags[index+1])
 
-        """Now we get the ouputs from our model, and the target model. We need this for our target in the error function"""
+
+        # Pasa los estados a través del modelo y los proximos estados pasan por el target
         labels = self.model.predict(np.array(states))
         next_state_values = self.model_target.predict(np.array(next_states))
         
-        """Now we define our labels, or what the output should have been
-           We want the output[action_taken] to be R_(t+1) + Qmax_(t+1) """
+        # Definir la salida
+        # Queremos que la salida sea[action_taken] to be R_(t+1) + Qmax_(t+1)
         for i in range(32):
             action = self.possible_actions.index(actions_taken[i])
             labels[i][action] = next_rewards[i] + (not next_done_flags[i]) * self.gamma * max(next_state_values[i])
 
-        """Train our model using the states and outputs generated"""
+        # Entrenar el modelo usando los estados y salidas ya generados
         self.model.fit(np.array(states),labels,batch_size = 32, epochs = 1, verbose = 0)
 
-        """Decrease epsilon and update how many times our agent has learned"""
+        # Disminuir el epsilon (Resultado de la formula de predicción).
+        # Actualiza cuantas veces el agente ha aprendido.
         if self.epsilon > self.epsilon_min:
             self.epsilon -= self.epsilon_decay
         self.learns += 1
         
-        """Every 10000 learned, copy our model weights to our target model"""
+        # Cada 10000 episodios, copia la carga del modelo
         if self.learns % 10000 == 0:
             self.model_target.set_weights(self.model.get_weights())
             print('\nTarget model updated')

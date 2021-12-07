@@ -1,5 +1,6 @@
 from collections import deque
 
+# Guardar los datos de ejecución en la clase Memory
 class Memory():
     def __init__(self,max_len):
         self.max_len = max_len
